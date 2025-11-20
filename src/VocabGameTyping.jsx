@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, Star, Award, Upload, Play, RotateCcw, Home } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Star, Award, Upload, Play, RotateCcw, Keyboard, Home } from 'lucide-react';
 
-const VocabGame = ({ onBackToHome }) => {
+const VocabGameTyping = ({ onBackToHome }) => {
   const [words, setWords] = useState([]);
   const [rounds, setRounds] = useState([]);
   const [roundIndex, setRoundIndex] = useState(0);
@@ -14,6 +14,7 @@ const VocabGame = ({ onBackToHome }) => {
   const [celebrating, setCelebrating] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const sampleWords = [
     { english: 'pencil', hebrew: 'עיפרון' },
@@ -46,7 +47,7 @@ const VocabGame = ({ onBackToHome }) => {
     loadDefaultWords();
     
     // Load leaderboard from localStorage
-    const savedLeaderboard = localStorage.getItem('vocabLeaderboard');
+    const savedLeaderboard = localStorage.getItem('vocabTypingLeaderboard');
     if (savedLeaderboard) setLeaderboard(JSON.parse(savedLeaderboard));
   }, []);
 
@@ -81,29 +82,33 @@ const VocabGame = ({ onBackToHome }) => {
     reader.readAsText(file);
   };
 
+  // Normalize answer for comparison (case-insensitive, trim spaces, normalize whitespace)
+  const normalizeAnswer = (answer) => {
+    return answer.trim().toLowerCase().replace(/\s+/g, ' ');
+  };
+
+  // Check if user's answer matches the correct answer
+  const checkAnswerMatch = (userAnswer, correctAnswer) => {
+    const normalizedUser = normalizeAnswer(userAnswer);
+    const normalizedCorrect = normalizeAnswer(correctAnswer);
+    
+    // Exact match (handles case-insensitive and normalized whitespace)
+    return normalizedUser === normalizedCorrect;
+  };
+
   const buildRounds = (wordList) => {
     const shuffled = [...wordList].sort(() => Math.random() - 0.5);
-    const maxRounds = Math.min(20, shuffled.length * 2);
+    const maxRounds = Math.min(20, shuffled.length);
 
-    const twoDirections = shuffled.flatMap((w) => ([
-      {
-        english: w.english,
-        hebrew: w.hebrew,
-        direction: 'toHebrew',
-        question: w.english,
-        answer: w.hebrew,
-      },
-      {
-        english: w.english,
-        hebrew: w.hebrew,
-        direction: 'toEnglish',
-        question: w.hebrew,
-        answer: w.english,
-      },
-    ]));
+    // Only Hebrew to English questions
+    const rounds = shuffled.slice(0, maxRounds).map((w) => ({
+      english: w.english,
+      hebrew: w.hebrew,
+      question: w.hebrew,
+      answer: w.english,
+    }));
 
-    const mixed = twoDirections.sort(() => Math.random() - 0.5).slice(0, maxRounds);
-    return mixed;
+    return rounds;
   };
 
   const startGame = () => {
@@ -123,49 +128,25 @@ const VocabGame = ({ onBackToHome }) => {
 
   const currentRound = rounds[roundIndex] || null;
 
-  const choices = useMemo(() => {
-    if (!currentRound) return [];
-    const correctAnswer = currentRound.answer;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!currentRound || showFeedback || !userAnswer.trim()) return;
 
-    const pool = words.filter((w) => (
-      !(w.english === currentRound.english && w.hebrew === currentRound.hebrew)
-    ));
-
-    const wrongs = [];
-    const poolCopy = [...pool];
-
-    while (wrongs.length < 3 && poolCopy.length > 0) {
-      const idx = Math.floor(Math.random() * poolCopy.length);
-      const w = poolCopy.splice(idx, 1)[0];
-      const candidate = currentRound.direction === 'toHebrew' ? w.hebrew : w.english;
-      if (candidate !== correctAnswer && !wrongs.includes(candidate)) {
-        wrongs.push(candidate);
-      }
-    }
-
-    const all = [correctAnswer, ...wrongs];
-    return all.sort(() => Math.random() - 0.5);
-  }, [currentRound, words]);
-
-  const checkAnswer = (selectedAnswer) => {
-    if (!currentRound || showFeedback) return;
-
-    setUserAnswer(selectedAnswer);
-    setShowFeedback(true);
-
-    const correct = selectedAnswer === currentRound.answer;
+    const correct = checkAnswerMatch(userAnswer, currentRound.answer);
 
     setTotalAnswered((t) => t + 1);
+    setShowFeedback(true);
+
     if (correct) {
       setScore((s) => s + 1);
       setFeedback('🎉 Perfect! Great job!');
       setCelebrating(true);
-      setTimeout(() => setCelebrating(false), 1000);
+      setTimeout(() => setCelebrating(false), 1500);
     } else {
-      setFeedback(`Not quite! The answer is: ${currentRound.answer}`);
+      setFeedback(`Not quite! The correct answer is: ${currentRound.answer}`);
     }
 
-    const delay = correct ? 2500 : 4500;
+    const delay = correct ? 2500 : 4000;
 
     setTimeout(() => {
       setShowFeedback(false);
@@ -176,8 +157,19 @@ const VocabGame = ({ onBackToHome }) => {
         endGame();
       } else {
         setRoundIndex((i) => i + 1);
+        // Auto-focus input for next question
+        setTimeout(() => {
+          const input = document.getElementById('answer-input');
+          if (input) input.focus();
+        }, 100);
       }
     }, delay);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !showFeedback) {
+      handleSubmit(e);
+    }
   };
 
   const endGame = () => {
@@ -193,7 +185,7 @@ const VocabGame = ({ onBackToHome }) => {
 
     const newLeaderboard = [...leaderboard, gameResult].sort((a, b) => b.score - a.score);
     setLeaderboard(newLeaderboard);
-    localStorage.setItem('vocabLeaderboard', JSON.stringify(newLeaderboard));
+    localStorage.setItem('vocabTypingLeaderboard', JSON.stringify(newLeaderboard));
 
     setGameComplete(true);
     setGameStarted(false);
@@ -204,15 +196,18 @@ const VocabGame = ({ onBackToHome }) => {
       <div className="min-h-screen bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 flex items-center justify-center p-3 sm:p-4">
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 max-w-2xl w-full text-center">
           <div className="flex justify-center mb-4 sm:mb-6">
-            <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-purple-500" />
+            <Keyboard className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-purple-500" />
           </div>
 
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-3 sm:mb-4 px-2">
-            Vocabulary Adventure for Shani! 🚀
+            Vocabulary Typing Challenge! ⌨️
           </h1>
 
-          <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8">
-            Test your English and Hebrew skills!
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-2 sm:mb-3">
+            Write the English translation of Hebrew words
+          </p>
+          <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">
+            Type the answer in English when you see a Hebrew word
           </p>
 
           <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 rounded-xl sm:rounded-2xl">
@@ -275,7 +270,7 @@ const VocabGame = ({ onBackToHome }) => {
           </div>
 
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4 text-center">🏆 Shani's Leaderboard</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4 text-center">🏆 Typing Challenge Leaderboard</h2>
             <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
               {leaderboard.map((game, index) => {
                 const isLatest = index === leaderboard.length - 1;
@@ -367,53 +362,65 @@ const VocabGame = ({ onBackToHome }) => {
         <div className={`bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 transform transition-all duration-300 ${celebrating ? 'scale-105' : 'scale-100'}`}>
           {currentRound && (
             <>
-              <div className="text-center mb-4 sm:mb-6 md:mb-8">
-                <div className="inline-block px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
-                  {currentRound.direction === 'toHebrew' ? 'English → Hebrew' : 'Hebrew → English'}
+              <div className="text-center mb-6 sm:mb-8 md:mb-10">
+                <div className="inline-block px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-purple-100 text-purple-700 rounded-full text-xs sm:text-sm font-semibold mb-4 sm:mb-6">
+                  Hebrew → English
                 </div>
 
-                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-4 sm:mb-6 min-h-[60px] sm:min-h-[70px] md:min-h-[80px] flex items-center justify-center px-2 break-words">
+                <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-800 mb-4 sm:mb-6 min-h-[80px] sm:min-h-[100px] md:min-h-[120px] flex items-center justify-center px-2 break-words" dir="rtl">
                   {currentRound.question}
                 </h2>
 
-                <p className="text-base sm:text-lg md:text-xl text-gray-600">
-                  What's the translation?
+                <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8">
+                  Type the English translation:
                 </p>
               </div>
 
-              <div className="space-y-2 sm:space-y-3 md:space-y-4">
-                {choices.map((choice) => {
-                  const isCorrectChoice = showFeedback && choice === currentRound.answer;
-                  const isWrongClicked = showFeedback && choice === userAnswer && userAnswer !== currentRound.answer;
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                <div className="relative">
+                  <input
+                    id="answer-input"
+                    type="text"
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
+                    disabled={showFeedback}
+                    placeholder="Type your answer in English..."
+                    autoFocus
+                    autoComplete="off"
+                    className={`w-full px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-center rounded-xl sm:rounded-2xl border-4 transition-all ${
+                      showFeedback
+                        ? userAnswer.trim().toLowerCase() === currentRound.answer.toLowerCase()
+                          ? 'bg-green-100 border-green-500 text-green-700'
+                          : 'bg-red-100 border-red-500 text-red-700'
+                        : inputFocused
+                        ? 'bg-purple-50 border-purple-400 text-gray-800'
+                        : 'bg-gray-50 border-purple-300 text-gray-800'
+                    } focus:outline-none focus:ring-4 focus:ring-purple-300 ${
+                      showFeedback ? 'cursor-not-allowed' : ''
+                    }`}
+                  />
+                </div>
 
-                  let buttonClass = 'bg-gradient-to-r from-purple-100 to-pink-100 text-gray-800 hover:from-purple-200 hover:to-pink-200';
-
-                  if (isCorrectChoice) {
-                    buttonClass = 'bg-green-500 text-white';
-                  } else if (isWrongClicked) {
-                    buttonClass = 'bg-red-500 text-white';
-                  }
-
-                  return (
-                    <button
-                      key={choice}
-                      onClick={() => checkAnswer(choice)}
-                      disabled={showFeedback}
-                      className={`w-full px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 text-base sm:text-lg md:text-xl lg:text-2xl font-semibold rounded-xl sm:rounded-2xl transition-all shadow-lg ${buttonClass} ${
-                        showFeedback ? 'cursor-not-allowed' : 'cursor-pointer active:scale-95 sm:hover:scale-105'
-                      }`}
-                      dir={currentRound.direction === 'toEnglish' ? 'ltr' : 'rtl'}
-                    >
-                      {choice}
-                    </button>
-                  );
-                })}
-              </div>
+                <button
+                  type="submit"
+                  disabled={showFeedback || !userAnswer.trim()}
+                  className={`w-full px-6 sm:px-8 py-4 sm:py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg sm:text-xl md:text-2xl font-bold rounded-xl sm:rounded-2xl transition-all shadow-lg ${
+                    showFeedback || !userAnswer.trim()
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:from-purple-600 hover:to-pink-600 transform hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  Submit Answer
+                </button>
+              </form>
 
               {showFeedback && (
                 <div
-                  className={`mt-4 sm:mt-5 md:mt-6 p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl text-center text-base sm:text-lg md:text-xl font-bold ${
-                    userAnswer === currentRound.answer
+                  className={`mt-4 sm:mt-6 p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl text-center text-base sm:text-lg md:text-xl font-bold ${
+                    userAnswer.trim().toLowerCase() === currentRound.answer.toLowerCase()
                       ? 'bg-green-100 text-green-700'
                       : 'bg-orange-100 text-orange-700'
                   }`}
@@ -445,4 +452,5 @@ const VocabGame = ({ onBackToHome }) => {
   );
 };
 
-export default VocabGame;
+export default VocabGameTyping;
+
