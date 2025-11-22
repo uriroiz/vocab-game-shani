@@ -83,27 +83,18 @@ const VocabGame = ({ onBackToHome }) => {
 
   const buildRounds = (wordList) => {
     const shuffled = [...wordList].sort(() => Math.random() - 0.5);
-    const maxRounds = Math.min(20, shuffled.length * 2);
+    const maxRounds = Math.min(20, shuffled.length);
 
-    const twoDirections = shuffled.flatMap((w) => ([
-      {
-        english: w.english,
-        hebrew: w.hebrew,
-        direction: 'toHebrew',
-        question: w.english,
-        answer: w.hebrew,
-      },
-      {
-        english: w.english,
-        hebrew: w.hebrew,
-        direction: 'toEnglish',
-        question: w.hebrew,
-        answer: w.english,
-      },
-    ]));
+    // Only create English to Hebrew rounds
+    const rounds = shuffled.map((w) => ({
+      english: w.english,
+      hebrew: w.hebrew,
+      direction: 'toHebrew',
+      question: w.english,
+      answer: w.hebrew,
+    }));
 
-    const mixed = twoDirections.sort(() => Math.random() - 0.5).slice(0, maxRounds);
-    return mixed;
+    return rounds.slice(0, maxRounds);
   };
 
   const startGame = () => {
