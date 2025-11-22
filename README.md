@@ -1,28 +1,58 @@
-# Shani's English-Hebrew Vocabulary Games 🚀
+# Shani's English Learning Games 🚀
 
-An interactive vocabulary learning platform with two game modes to practice English and Hebrew translation skills.
+An interactive English learning platform featuring vocabulary games and irregular verb practice with multiple engaging game modes.
 
 ## 🎮 Game Modes
 
-### 1. Multiple Choice Game (Easy)
+### Vocabulary Games
+
+#### 1. Multiple Choice Game (Easy)
 - Choose the correct answer from 4 options
 - Both English → Hebrew and Hebrew → English
 - 20 questions per game
 - Great for beginners
 
-### 2. Typing Challenge (Hard)
+#### 2. Typing Challenge (Hard)
 - Type the English translation yourself
 - Hebrew → English only
 - 20 questions per game
 - Tests spelling and recall
 
+### Irregular Verb Games ⭐ NEW
+
+#### 3. Multiple Choice Verbs
+- Sequential questions for V2 (Past Simple) and V3 (Past Participle)
+- 4 answer choices per question
+- Wrong answers reappear for extra practice
+- Progress through multiple levels
+- 80+ built-in irregular verbs
+
+#### 4. Drag & Drop Verbs
+- Drag colorful word chips into V2/V3 boxes
+- Visual feedback (green=correct, red=wrong)
+- Shows correct answers for mistakes
+- Interactive and fun interface
+- Perfect for kinesthetic learners
+
 ## 📚 Features
 
+### Vocabulary Games
 - **84 Vocabulary Words** from Shani's custom word list
 - **Separate Leaderboards** for each game mode
 - **Progress Tracking** with score percentages
+- **CSV Upload** - use your own word lists
+
+### Irregular Verb Games
+- **80+ Irregular Verbs** built-in (be, go, see, do, make, etc.)
+- **Two Interactive Modes** - Multiple Choice & Drag-Drop
+- **Smart Learning** - wrong answers reappear for practice
+- **Customizable** - use your own verb lists
+- **Beautiful Animations** - smooth transitions with Framer Motion
+
+### General
 - **Responsive Design** works on desktop, tablet, and mobile
-- **Beautiful UI** with smooth animations and celebrations
+- **Beautiful UI** with gradient backgrounds and smooth animations
+- **Modular Components** - easy to integrate into other projects
 
 ## 🚀 Getting Started
 
@@ -80,9 +110,34 @@ This app is optimized for deployment on Vercel:
 ## 🛠️ Technologies
 
 - **React** - UI framework
-- **Tailwind CSS** - Styling
-- **Lucide React** - Icons
+- **Framer Motion** - Smooth animations and gestures
+- **Tailwind CSS** - Utility-first styling
+- **Lucide React** - Beautiful icons
 - **Create React App** - Build setup
+
+## 📦 Component Documentation
+
+### Irregular Verb Game Component
+
+The irregular verb game is available as a standalone, reusable React component. See [`IRREGULAR_VERBS_README.md`](./IRREGULAR_VERBS_README.md) for detailed documentation including:
+
+- Installation instructions
+- API reference
+- Usage examples
+- Customization options
+- Integration guide
+
+**Quick Example:**
+```jsx
+import IrregularVerbGame from './src/IrregularVerbGame';
+
+function App() {
+  return <IrregularVerbGame mode="drag" />;
+}
+```
+
+**Demo Component:**
+Check out `src/IrregularVerbGameDemo.jsx` for a complete demo with mode switching and custom configurations.
 
 ## 📄 License
 
